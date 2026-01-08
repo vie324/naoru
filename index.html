@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAORU整体院 戦略レポート v6.0 | ブランドデザイン統合版</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@2.1.0"></script>
+    
+    <!-- Markdown Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* Custom Brand Color Definition */
+        :root {
+            --brand-color: #e57172;
+            --brand-light: #fce7e7;
+            --brand-dark: #c04d4e;
+        }
+
+        body { font-family: 'Noto Sans JP', sans-serif; background-color: #f8fafc; color: #334155; }
+        .chart-container { position: relative; width: 100%; height: 300px; }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(229, 113, 114, 0.15); }
+        
+        /* Utility Classes for Brand Color */
+        .text-brand { color: var(--brand-color); }
+        .bg-brand { background-color: var(--brand-color); }
+        .bg-brand-light { background-color: var(--brand-light); }
+        .border-brand { border-color: var(--brand-color); }
+        .hover-text-brand:hover { color: var(--brand-color); }
+        .hover-bg-brand:hover { background-color: var(--brand-color); }
+
+        /* Loading Animation */
+        .typing-indicator span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background-color: var(--brand-color);
+            border-radius: 50%;
+            animation: typing 1s infinite ease-in-out;
+            margin-right: 4px;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 100% { transform: translateY(0); opacity: 0.5; }
+            50% { transform: translateY(-5px); opacity: 1; }
+        }
+
+        /* Tab Styles */
+        .tab-btn.active {
+            border-bottom: 3px solid var(--brand-color);
+            color: var(--brand-color);
+            font-weight: 700;
+        }
+        .tab-btn {
+            border-bottom: 3px solid transparent;
+            color: #64748b;
+        }
+
+        /* Progress Bar */
+        .progress-bar-bg {
+            background-color: #e2e8f0;
+            border-radius: 9999px;
+            height: 8px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 0.5s ease-out;
+        }
+        
+        /* Modal */
+        .modal { transition: opacity 0.25s ease; }
+        body.modal-active { overflow-x: hidden; overflow-y: visible !important; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <!-- Brand Icon -->
+                <div class="bg-brand text-white p-2 rounded-lg shadow-sm">
+                    <i class="fa-solid fa-chart-simple"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-800">NAORU整体 戦略レポート <span class="text-brand text-sm ml-2">v6.0</span></h1>
+                    <p class="text-xs text-slate-500">2025年12月実績 | ブランド統合デザイン版</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4 h-full">
+                <!-- Tab Navigation -->
+                <div class="hidden md:flex space-x-6 h-full mr-4">
+                    <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active h-full flex items-center gap-2 px-1 text-sm font-medium transition-colors">
+                        <i class="fa-solid fa-table-columns"></i> 経営ダッシュボード
+                    </button>
+                    <button onclick="switchTab('deepdive')" id="tab-deepdive" class="tab-btn h-full flex items-center gap-2 px-1 text-sm font-medium transition-colors">
+                        <i class="fa-solid fa-store"></i> 全店舗・競合分析
+                    </button>
+                </div>
+
+                <!-- API Key Setting Button -->
+                <button onclick="toggleModal('apiKeyModal')" class="text-slate-500 hover-text-brand transition-colors" title="APIキー設定">
+                    <i class="fa-solid fa-gear text-xl"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- API Key Alert (Hidden if key exists) -->
+        <div id="apiKeyAlert" class="hidden bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r shadow-sm flex justify-between items-center">
+            <div class="flex items-center">
+                <i class="fa-solid fa-triangle-exclamation text-amber-500 mr-3 text-xl"></i>
+                <div>
+                    <p class="font-bold text-amber-800 text-sm">AI機能の準備ができていません</p>
+                    <p class="text-xs text-amber-700">「AI酒井くん」を使用するには、右上の設定(⚙️)からGemini APIキーを入力してください。</p>
+                </div>
+            </div>
+            <button onclick="toggleModal('apiKeyModal')" class="bg-amber-100 text-amber-800 text-xs font-bold px-3 py-2 rounded hover:bg-amber-200">
+                設定する
+            </button>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 1: DASHBOARD                           -->
+        <!-- ========================================== -->
+        <div id="view-dashboard" class="space-y-8">
+            
+            <!-- Summary Cards -->
+            <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Ito Summary -->
+                <div class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-brand relative overflow-hidden">
+                    <div class="absolute right-4 top-4 opacity-10 text-6xl text-brand"><i class="fa-solid fa-user-tie"></i></div>
+                    <h2 class="text-xl font-bold text-slate-800 mb-1">伊藤オーナー <span class="text-sm font-normal text-slate-500">(関内・溝の口・上大岡)</span></h2>
+                    <div class="grid grid-cols-2 gap-4 mt-4 relative z-10">
+                        <div class="bg-brand-light p-3 rounded-lg">
+                            <p class="text-xs text-slate-500 mb-1">平均CPA (HPB)</p>
+                            <p class="text-2xl font-bold text-brand">¥4,529</p>
+                            <span class="text-xs font-bold text-white bg-emerald-500 px-2 py-0.5 rounded-full">目標達成</span>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-lg">
+                            <p class="text-xs text-slate-500 mb-1">全体入会率</p>
+                            <p class="text-2xl font-bold text-slate-700">45.7%</p>
+                            <span class="text-xs font-bold text-white bg-rose-500 px-2 py-0.5 rounded-full">未達 (目標50%)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fukumoto Summary -->
+                <div class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-slate-600 relative overflow-hidden">
+                    <div class="absolute right-4 top-4 opacity-10 text-6xl text-slate-600"><i class="fa-solid fa-user-tie"></i></div>
+                    <h2 class="text-xl font-bold text-slate-800 mb-1">福本オーナー <span class="text-sm font-normal text-slate-500">(鶴見・藤沢)</span></h2>
+                    <div class="grid grid-cols-2 gap-4 mt-4 relative z-10">
+                        <div class="bg-slate-100 p-3 rounded-lg">
+                            <p class="text-xs text-slate-500 mb-1">平均CPA (HPB)</p>
+                            <p class="text-2xl font-bold text-slate-700">¥7,857</p>
+                            <span class="text-xs font-bold text-white bg-rose-500 px-2 py-0.5 rounded-full">未達</span>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-lg">
+                            <p class="text-xs text-slate-500 mb-1">全体入会率</p>
+                            <p class="text-2xl font-bold text-slate-700">38.7%</p>
+                            <span class="text-xs font-bold text-white bg-rose-500 px-2 py-0.5 rounded-full">未達</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Ranking Charts -->
+            <section class="bg-white rounded-xl shadow-sm p-6">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800"><i class="fa-solid fa-chart-simple text-slate-400 mr-2"></i>対象5店舗 パフォーマンス比較</h3>
+                    </div>
+                    <div class="flex gap-4 text-xs font-bold mt-2 md:mt-0">
+                        <div class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-brand"></span> 伊藤オーナー</div>
+                        <div class="flex items-center gap-1"><span class="w-3 h-3 rounded bg-slate-600"></span> 福本オーナー</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- CPA Ranking -->
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-600 mb-2 text-center">CPA (獲得単価) <span class="text-xs font-normal text-slate-400">低いほど優秀</span></h4>
+                        <div class="chart-container">
+                            <canvas id="cpaChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Rate Ranking -->
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-600 mb-2 text-center">入会率 (リピート率) <span class="text-xs font-normal text-slate-400">高いほど優秀</span></h4>
+                        <div class="chart-container">
+                            <canvas id="rateChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comprehensive Table -->
+                <div class="mt-8 overflow-x-auto">
+                    <table class="min-w-full text-sm text-left text-slate-600 border border-slate-200">
+                        <thead class="bg-slate-50 text-slate-700 font-bold">
+                            <tr>
+                                <th class="px-4 py-3 border-b text-center">ランク</th>
+                                <th class="px-4 py-3 border-b">店舗名</th>
+                                <th class="px-4 py-3 border-b">オーナー</th>
+                                <th class="px-4 py-3 border-b text-right">CPA実績</th>
+                                <th class="px-4 py-3 border-b text-right">入会率</th>
+                                <th class="px-4 py-3 border-b text-center">判定</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100" id="comparisonTableBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 2: DEEP DIVE (With Competitors)        -->
+        <!-- ========================================== -->
+        <div id="view-deepdive" class="space-y-8 hidden">
+            
+            <!-- Control Panel -->
+            <section class="bg-white rounded-xl shadow-sm p-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div class="flex items-center gap-3 w-full md:w-auto">
+                    <div class="bg-slate-800 text-white p-3 rounded-lg"><i class="fa-solid fa-store"></i></div>
+                    <div>
+                        <h2 class="text-lg font-bold">全店舗・競合分析</h2>
+                        <p class="text-xs text-slate-500">競合比較とスタッフパフォーマンスを統合分析</p>
+                    </div>
+                </div>
+                <div class="w-full md:w-1/3">
+                    <label class="block text-xs font-bold text-slate-500 mb-1">分析対象店舗を選択</label>
+                    <select id="deepDiveSelect" onchange="renderStoreDetails()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 rounded-lg p-2.5 focus:ring-brand focus:border-brand">
+                        <!-- Options populated by JS -->
+                    </select>
+                </div>
+            </section>
+
+            <!-- Main Detail Content -->
+            <div id="storeDetailContainer" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Left: Basic Info & Staff Data & Competitors -->
+                <div class="lg:col-span-5 space-y-6">
+                    
+                    <!-- Basic Card -->
+                    <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-brand" id="detailCardBorder">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="text-2xl font-bold text-slate-800" id="detailName">店舗名</h3>
+                                <p class="text-sm text-slate-500" id="detailOwner">オーナー名</p>
+                            </div>
+                            <div class="text-right">
+                                <a id="detailLink" href="#" target="_blank" class="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full hover:bg-slate-200 transition flex items-center gap-1 mb-2">
+                                    HPB <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                </a>
+                                <p class="text-xs font-bold text-brand" id="detailOfferPrice">初回: ¥3,500</p>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 mt-6">
+                            <div class="p-3 bg-slate-50 rounded text-center">
+                                <p class="text-xs text-slate-500">12月新規(HPB)</p>
+                                <p class="text-xl font-bold text-slate-800" id="detailNew">-</p>
+                            </div>
+                            <div class="p-3 bg-slate-50 rounded text-center">
+                                <p class="text-xs text-slate-500">CPA実績</p>
+                                <p class="text-xl font-bold" id="detailCPA">-</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Staff Performance -->
+                    <div class="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+                        <h4 class="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-user-nurse text-brand"></i> スタッフ別 成約率 (12月)
+                        </h4>
+                        <div id="staffList" class="space-y-4">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Competitor Intelligence (Dynamic for All Stores) -->
+                    <div class="bg-white rounded-xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-4 opacity-5"><i class="fa-solid fa-chess text-4xl"></i></div>
+                        <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-crosshairs text-slate-500"></i> エリア競合比較 (初回オファー)
+                        </h4>
+                        <div id="competitorList" class="space-y-2">
+                            <!-- Populated by JS -->
+                        </div>
+                        <div class="mt-3 text-xs text-slate-500 bg-slate-50 p-2 rounded">
+                            <span class="font-bold text-brand">分析:</span> <span id="competitorAnalysisText">...</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right: AI Sakai-kun Interface -->
+                <div class="lg:col-span-7">
+                    <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl shadow-lg p-6 text-white h-full flex flex-col">
+                        <div class="flex items-center gap-3 mb-4">
+                            <!-- Sakai-kun Icon -->
+                            <div class="relative">
+                                <div class="bg-gradient-to-r from-brand to-rose-400 w-12 h-12 rounded-full flex items-center justify-center text-white border-2 border-white shadow">
+                                    <i class="fa-solid fa-user-tie text-2xl"></i>
+                                </div>
+                                <span class="absolute -bottom-1 -right-1 bg-green-500 w-4 h-4 rounded-full border-2 border-slate-800"></span>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg">AI酒井くん <span class="text-xs font-normal text-slate-300 ml-2">経営・人材戦略パートナー</span></h3>
+                                <p class="text-xs text-slate-400">競合データ・スタッフ実績を加味した具体的提案</p>
+                            </div>
+                        </div>
+
+                        <div class="flex-grow bg-slate-800/50 rounded-lg border border-slate-700 p-4 mb-4 overflow-y-auto max-h-[600px] text-sm leading-relaxed" id="aiOutputBox">
+                            <div class="flex flex-col items-center justify-center h-full text-slate-500 text-sm opacity-60">
+                                <i class="fa-solid fa-comments text-4xl mb-3"></i>
+                                <p class="text-center">左側で店舗を選択してください。<br>競合データを含めた分析を開始します。</p>
+                            </div>
+                        </div>
+
+                        <button onclick="runStoreAudit()" id="auditBtn" class="w-full bg-brand hover:bg-rose-400 text-white font-bold py-3 px-6 rounded-lg shadow-lg flex items-center justify-center gap-2 transition-all">
+                            <span>店舗・競合・スタッフ課題を分析する</span>
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- API Key Modal -->
+    <div id="apiKeyModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-slate-900 opacity-50"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded shadow-lg z-50 overflow-y-auto">
+            <div class="modal-content py-4 text-left px-6">
+                <div class="flex justify-between items-center pb-3">
+                    <p class="text-2xl font-bold text-slate-800">Gemini API設定</p>
+                    <div class="modal-close cursor-pointer z-50" onclick="toggleModal('apiKeyModal')">
+                        <i class="fa-solid fa-xmark text-slate-500 text-xl"></i>
+                    </div>
+                </div>
+                <p class="text-sm text-slate-600 mb-4">AI酒井くんを使用するにはGoogle Gemini APIキーが必要です。</p>
+                <label class="block text-sm font-bold text-slate-700 mb-2" for="apiKeyInput">API Key</label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-slate-700 leading-tight focus:outline-none focus:border-brand" id="apiKeyInput" type="password">
+                <div class="flex justify-end pt-4 gap-2">
+                    <button onclick="toggleModal('apiKeyModal')" class="px-4 py-2 bg-slate-200 text-slate-600 rounded hover:bg-slate-300 transition text-sm">キャンセル</button>
+                    <button onclick="saveApiKey()" class="px-4 py-2 bg-brand text-white rounded hover:bg-rose-500 transition text-sm font-bold">保存する</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-800 text-slate-400 py-6 text-center text-xs mt-12">
+        <p>NAORU Seitai Management System | Powered by Gemini API</p>
+    </footer>
+
+    <!-- Logic Script -->
+    <script>
+        // --- 0. API Key Logic ---
+        function toggleModal(modalID){
+            document.getElementById(modalID).classList.toggle("opacity-0");
+            document.getElementById(modalID).classList.toggle("pointer-events-none");
+            document.body.classList.toggle("modal-active");
+            if (!document.getElementById(modalID).classList.contains("opacity-0")) {
+                const key = localStorage.getItem("naoru_gemini_api_key");
+                if (key) document.getElementById("apiKeyInput").value = key;
+            }
+        }
+        function saveApiKey() {
+            const key = document.getElementById("apiKeyInput").value.trim();
+            if (key) {
+                localStorage.setItem("naoru_gemini_api_key", key);
+                document.getElementById("apiKeyAlert").classList.add("hidden");
+                toggleModal('apiKeyModal');
+                alert("APIキーを保存しました。");
+            } else alert("APIキーを入力してください。");
+        }
+        function checkApiKey() {
+            const key = localStorage.getItem("naoru_gemini_api_key");
+            if (!key) {
+                document.getElementById("apiKeyAlert").classList.remove("hidden");
+                return false;
+            }
+            return key;
+        }
+
+        // --- 1. Data Definitions (Enriched with Competitors) ---
+        const storeData = [
+            { 
+                id: 0, owner: "伊藤", store: "関内", cpa: 4583, rate: 53.8, newClients: 12, offer: 3500,
+                url: "https://beauty.hotpepper.jp/kr/slnH000551741/",
+                staff: [ { name: "福本", arrivals: 3, joins: 2 }, { name: "福倉", arrivals: 10, joins: 5 } ],
+                competitors: [
+                    { name: "カラダファクトリー関内", price: 3980, feature: "大手・駅近" },
+                    { name: "関内カイロ", price: 4500, feature: "老舗・技術" },
+                    { name: "リラク関内", price: 3200, feature: "リラク・安価" }
+                ]
+            },
+            { 
+                id: 1, owner: "伊藤", store: "溝の口", cpa: 2200, rate: 35.0, newClients: 20, offer: 2200,
+                url: "https://beauty.hotpepper.jp/kr/slnH000690916/",
+                staff: [ { name: "米谷", arrivals: 4, joins: 3 }, { name: "大野", arrivals: 8, joins: 3 }, { name: "永田", arrivals: 8, joins: 1 } ],
+                competitors: [
+                    { name: "溝の口整体院", price: 2980, feature: "地域密着" },
+                    { name: "Re.Ra.Ku 溝の口", price: 3500, feature: "リラクゼーション" },
+                    { name: "激安マッサージ", price: 1980, feature: "60分2980円系" }
+                ]
+            },
+            { 
+                id: 2, owner: "伊藤", store: "上大岡", cpa: 27500, rate: 100.0, newClients: 2, offer: 3500,
+                url: "https://beauty.hotpepper.jp/kr/slnH000720856/",
+                staff: [ { name: "有路", arrivals: 1, joins: 1 }, { name: "岡本", arrivals: 1, joins: 1 } ],
+                competitors: [
+                    { name: "あおぞら整骨院", price: 2600, feature: "エリア最安・保険" },
+                    { name: "匠 上大岡", price: 2980, feature: "個室・高級感" },
+                    { name: "カラダファクトリー", price: 3300, feature: "認知度No.1" }
+                ]
+            },
+            { 
+                id: 3, owner: "福本", store: "鶴見", cpa: 6875, rate: 34.8, newClients: 8, offer: 3300,
+                url: "https://beauty.hotpepper.jp/kr/slnH000675689/",
+                staff: [ { name: "貞末", arrivals: 12, joins: 5 }, { name: "谷口", arrivals: 11, joins: 3 } ],
+                competitors: [
+                    { name: "鶴見中央整骨院", price: 1500, feature: "保険・激安" },
+                    { name: "ラフィネ 鶴見", price: 2200, feature: "リラク・短時間" },
+                    { name: "整体院 晴", price: 4980, feature: "高単価・重症" }
+                ]
+            },
+            { 
+                id: 4, owner: "福本", store: "藤沢", cpa: 9167, rate: 50.0, newClients: 6, offer: 3300,
+                url: "https://beauty.hotpepper.jp/kr/slnH000765038/",
+                staff: [ { name: "宮川", arrivals: 8, joins: 4 } ],
+                competitors: [
+                    { name: "藤沢整体院", price: 3980, feature: "ボキボキしない" },
+                    { name: "りらくる 藤沢", price: 2980, feature: "深夜営業" },
+                    { name: "湘南カイロ", price: 5500, feature: "老舗・高単価" }
+                ]
+            }
+        ];
+
+        let currentStoreId = 0;
+
+        // --- 2. UI Logic ---
+        function switchTab(tabName) {
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-deepdive').classList.add('hidden');
+            document.getElementById('tab-dashboard').classList.remove('active');
+            document.getElementById('tab-deepdive').classList.remove('active');
+
+            document.getElementById(`view-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+
+        function initDeepDive() {
+            const select = document.getElementById('deepDiveSelect');
+            storeData.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.text = `${d.store} (${d.owner}) - CPA¥${d.cpa.toLocaleString()}`;
+                select.appendChild(opt);
+            });
+            renderStoreDetails();
+        }
+
+        function renderStoreDetails() {
+            const id = parseInt(document.getElementById('deepDiveSelect').value);
+            currentStoreId = id;
+            const store = storeData.find(d => d.id === id);
+
+            // Basic Info
+            document.getElementById('detailName').innerText = store.store + "店";
+            document.getElementById('detailOwner').innerText = store.owner + "オーナー";
+            document.getElementById('detailNew').innerText = store.newClients + "人";
+            document.getElementById('detailCPA').innerText = "¥" + store.cpa.toLocaleString();
+            document.getElementById('detailLink').href = store.url;
+            document.getElementById('detailOfferPrice').innerText = `初回: ¥${store.offer.toLocaleString()}`;
+            
+            // Border Color
+            const border = document.getElementById('detailCardBorder');
+            border.className = `bg-white rounded-xl shadow-sm p-6 border-l-4 ${store.owner === '伊藤' ? 'border-brand' : 'border-slate-600'}`;
+
+            // Staff List
+            const staffContainer = document.getElementById('staffList');
+            staffContainer.innerHTML = '';
+            store.staff.forEach(s => {
+                const rate = s.arrivals > 0 ? Math.round((s.joins / s.arrivals) * 100) : 0;
+                let barColor = 'bg-slate-400';
+                if (rate >= 50) barColor = 'bg-emerald-500';
+                else if (rate >= 30) barColor = 'bg-amber-400';
+                else barColor = 'bg-rose-500';
+
+                const html = `
+                    <div>
+                        <div class="flex justify-between items-end mb-1">
+                            <span class="text-sm font-bold text-slate-700">${s.name}</span>
+                            <span class="text-xs text-slate-500">成約${s.joins}/${s.arrivals}名 (<span class="font-bold text-slate-800">${rate}%</span>)</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill ${barColor}" style="width: ${rate}%"></div>
+                        </div>
+                    </div>
+                `;
+                staffContainer.innerHTML += html;
+            });
+
+            // Competitor List
+            const compContainer = document.getElementById('competitorList');
+            const analysisText = document.getElementById('competitorAnalysisText');
+            compContainer.innerHTML = '';
+
+            let cheaperCompetitors = 0;
+            store.competitors.forEach(c => {
+                const isCheaper = c.price < store.offer;
+                if(isCheaper) cheaperCompetitors++;
+                
+                compContainer.innerHTML += `
+                    <div class="flex justify-between items-center text-sm p-2 rounded ${isCheaper ? 'bg-rose-50 border border-rose-100' : 'bg-slate-50 border border-slate-100'}">
+                        <span class="text-slate-700">${c.name}</span>
+                        <div class="text-right">
+                            <span class="font-bold block">¥${c.price.toLocaleString()}</span>
+                            <span class="text-[10px] text-slate-500">${c.feature}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Auto Analysis Text
+            if (cheaperCompetitors >= 2) {
+                analysisText.innerText = `競合より価格が高めです(負け: ${cheaperCompetitors}店舗)。高単価の理由(技術・検査)の訴求が必要です。`;
+            } else if (cheaperCompetitors > 0) {
+                analysisText.innerText = `エリア相場と同等です。価格以外の差別化が重要です。`;
+            } else {
+                analysisText.innerText = `エリア内では安価な部類です。価格競争力はあります。`;
+            }
+
+            // Reset AI Output
+            document.getElementById('aiOutputBox').innerHTML = `
+                <div class="flex flex-col items-center justify-center h-full text-slate-500 text-sm opacity-60">
+                    <i class="fa-solid fa-comments text-4xl mb-3"></i>
+                    <p class="text-center">「${store.store}店」のデータをセットしました。<br>分析ボタンを押すと、AI酒井くんが回答します。</p>
+                </div>
+            `;
+        }
+
+        function populateComparisonTable() {
+            const tbody = document.getElementById('comparisonTableBody');
+            const sortedData = [...storeData].sort((a, b) => a.cpa - b.cpa);
+
+            sortedData.forEach((d, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors";
+                
+                let statusBadge = "";
+                if (d.cpa <= 5000 && d.rate >= 50) {
+                    statusBadge = '<span class="px-2 py-1 rounded bg-emerald-100 text-emerald-700 text-xs font-bold">S (優良)</span>';
+                } else if (d.cpa <= 5000) {
+                    statusBadge = '<span class="px-2 py-1 rounded bg-yellow-100 text-yellow-700 text-xs font-bold">A (要成約率)</span>';
+                } else if (d.rate >= 50) {
+                    statusBadge = '<span class="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-bold">B (要CPA)</span>';
+                } else {
+                    statusBadge = '<span class="px-2 py-1 rounded bg-rose-100 text-rose-700 text-xs font-bold">C (要改善)</span>';
+                }
+
+                const ownerClass = d.owner === "伊藤" ? "text-brand" : "text-slate-600";
+
+                tr.innerHTML = `
+                    <td class="px-4 py-3 border-b text-center font-bold text-slate-500">#${index + 1}</td>
+                    <td class="px-4 py-3 border-b font-bold text-slate-800">${d.store}</td>
+                    <td class="px-4 py-3 border-b font-medium ${ownerClass}">${d.owner}</td>
+                    <td class="px-4 py-3 border-b text-right font-bold">¥${d.cpa.toLocaleString()}</td>
+                    <td class="px-4 py-3 border-b text-right">${d.rate}%</td>
+                    <td class="px-4 py-3 border-b text-center">${statusBadge}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // --- 3. Gemini AI Logic (Sakai-kun) ---
+        async function runStoreAudit() {
+            const apiKey = checkApiKey();
+            if (!apiKey) { toggleModal('apiKeyModal'); return; }
+
+            const store = storeData.find(d => d.id === currentStoreId);
+            const btn = document.getElementById('auditBtn');
+            const outputBox = document.getElementById('aiOutputBox');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span>酒井くんが思考中...</span><div class="typing-indicator ml-2"><span></span><span></span><span></span></div>';
+            
+            // Generate Contexts
+            let staffContext = store.staff.map(s => {
+                const rate = s.arrivals > 0 ? Math.round((s.joins / s.arrivals) * 100) : 0;
+                return `- ${s.name}: 入会率${rate}% (${s.joins}/${s.arrivals})`;
+            }).join("\n");
+
+            let compContext = store.competitors.map(c => {
+                return `- ${c.name}: ¥${c.price} (${c.feature})`;
+            }).join("\n");
+
+            const prompt = `
+あなたはNAORU整体院の戦略パートナー「酒井くん」です。
+以下の店舗データを分析し、具体的かつ辛口な改善策を提案してください。
+
+【店舗情報】
+店舗: ${store.store} (${store.owner}オーナー)
+自社初回オファー: ¥${store.offer}
+CPA: ¥${store.cpa.toLocaleString()} (目標¥5,000)
+入会率: ${store.rate}% (目標50%)
+
+【競合環境】
+${compContext}
+
+【スタッフ別実績】
+${staffContext}
+
+【特記事項】
+- 上大岡: CPA異常高騰(¥2.7万)、競合多数で埋没の可能性。
+- 溝の口: 安価(¥2200)だが入会率低い。スタッフ格差あり。
+- 鶴見: Meta広告の質が悪く入会率低下。
+
+【出力フォーマット(Markdown)】
+### 🧐 酒井の眼 (現状分析)
+(競合との価格差、スタッフのパフォーマンスから見た根本原因)
+
+### 💡 アクションプラン
+1. **[オファー戦略]**: 競合(${store.competitors[0].name}等)に対し、価格を変えるべきか、見せ方を変えるべきか。
+2. **[スタッフ教育]**: 具体的なスタッフ名を挙げた対策。
+3. **[オーナーへ]**: 実行すべきタスク。
+`;
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+                const aiText = data.candidates[0].content.parts[0].text;
+                outputBox.innerHTML = `<div class="prose prose-invert prose-sm max-w-none leading-relaxed">${marked.parse(aiText)}</div>`;
+            } catch (error) {
+                console.error(error);
+                outputBox.innerHTML = `<p class="text-rose-400 text-center mt-10">エラーが発生しました。<br><span class="text-xs">${error.message}</span></p>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>店舗・競合・スタッフ課題を分析する</span><i class="fa-solid fa-paper-plane"></i>';
+            }
+        }
+
+        // --- 4. Charts Logic ---
+        function initComparisonCharts() {
+            const cpaData = [...storeData].sort((a, b) => a.cpa - b.cpa);
+            const rateData = [...storeData].sort((a, b) => b.rate - a.rate);
+            const ownerColors = { "伊藤": "#e57172", "福本": "#475569" }; // Brand vs Slate
+
+            new Chart(document.getElementById('cpaChart'), {
+                type: 'bar',
+                data: {
+                    labels: cpaData.map(d => d.store),
+                    datasets: [{ label: 'CPA (円)', data: cpaData.map(d => d.cpa), backgroundColor: cpaData.map(d => ownerColors[d.owner]), borderRadius: 4 }]
+                },
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, annotation: { annotations: { line1: { type: 'line', xMin: 5000, xMax: 5000, borderColor: '#e57172', borderWidth: 2, borderDash: [5, 5], label: { content: '目標 ¥5,000', enabled: true, position: 'end', color: '#e57172' } } } } },
+                    scales: { x: { beginAtZero: true } }
+                }
+            });
+
+            new Chart(document.getElementById('rateChart'), {
+                type: 'bar',
+                data: {
+                    labels: rateData.map(d => d.store),
+                    datasets: [{ label: '入会率 (%)', data: rateData.map(d => d.rate), backgroundColor: rateData.map(d => ownerColors[d.owner]), borderRadius: 4 }]
+                },
+                options: {
+                    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, annotation: { annotations: { line1: { type: 'line', xMin: 50, xMax: 50, borderColor: '#10b981', borderWidth: 2, borderDash: [5, 5], label: { content: '目標 50%', enabled: true, position: 'end', color: '#10b981' } } } } },
+                    scales: { x: { beginAtZero: true, max: 100 } }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            checkApiKey();
+            initComparisonCharts();
+            populateComparisonTable();
+            initDeepDive();
+        });
+    </script>
+</body>
+</html>
