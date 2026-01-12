@@ -66,7 +66,7 @@
         .media-switch-btn:hover { opacity: 1; background: rgba(255,255,255,0.5); }
         .media-switch-btn.active { opacity: 1; filter: grayscale(0%); background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); transform: translateY(-1px); }
         
-        /* Specific Media Colors (FIXED: Added background-color to all active states) */
+        /* Specific Media Colors */
         .media-switch-btn.hpb.active { border-color: var(--hpb-color); color: var(--hpb-color); background-color: var(--hpb-light); }
         .media-switch-btn.hpb i { color: var(--hpb-color); }
 
@@ -768,25 +768,58 @@
             const storeSelect = document.getElementById('inputStoreSelect');
             if (storeSelect.options.length === 0) return;
             const storeId = parseInt(storeSelect.value);
+            
+            // Collect Data
+            const dataToSave = {};
             const inputs = document.querySelectorAll('#inputTableBody input');
             inputs.forEach(input => {
                 const key = getKey(storeId, input.dataset.year, input.dataset.month, currentInputMedia);
                 if (!monthlyData[key]) monthlyData[key] = {};
                 monthlyData[key][input.dataset.field] = parseFloat(input.value) || 0;
+                dataToSave[key] = monthlyData[key];
             });
             const staffInputs = document.querySelectorAll('.staff-input');
             staffInputs.forEach(input => {
                 const key = getStaffKey(storeId, input.dataset.year, input.dataset.month, currentInputMedia, input.dataset.staff);
                 if (!monthlyData[key]) monthlyData[key] = {};
                 monthlyData[key][input.dataset.field] = parseInt(input.value) || 0;
+                dataToSave[key] = monthlyData[key];
             });
+            
             localStorage.setItem("naoru_monthly_data", JSON.stringify(monthlyData));
-            // GAS Sync
+            
+            // GAS Sync (Save)
             const gasUrl = localStorage.getItem("naoru_gas_url");
             if (gasUrl) {
-                fetch(gasUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'save', storeId, media: currentInputMedia, data: monthlyData }) }).catch(e=>console.error(e));
+                const btn = document.querySelector('button[onclick="saveMonthlyData()"]');
+                const originalText = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 送信中...';
+                
+                try {
+                    await fetch(gasUrl, { 
+                        method: 'POST', 
+                        mode: 'no-cors', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify({ 
+                            action: 'save', 
+                            storeId: storeId, 
+                            media: currentInputMedia, 
+                            data: dataToSave 
+                        }) 
+                    });
+                    alert('保存しました (GAS連携完了)');
+                } catch(e) {
+                    console.error(e);
+                    alert('ローカルには保存しましたが、GAS送信に失敗しました');
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            } else {
+                alert('保存しました (ローカルのみ)');
             }
-            refreshActiveData(); renderInputTable(); alert('保存しました');
+            refreshActiveData(); renderInputTable(); 
         }
         async function loadFromSpreadsheet() {
              const gasUrl = localStorage.getItem("naoru_gas_url");
@@ -799,14 +832,12 @@
                  const res = await fetch(`${gasUrl}?action=load`);
                  const json = await res.json();
                  
-                 // 1. 店舗マスタの更新 (ここを追加)
+                 // 1. 店舗マスタの更新
                  if (json.stores && Array.isArray(json.stores)) {
                      masterStores = json.stores;
                      localStorage.setItem("naoru_master_stores", JSON.stringify(masterStores));
                      
-                     // 店舗マスタ更新に伴い、付随データも初期化または調整が必要
-                     // 今回はシンプルに、既存のstaticDetails等は維持しつつ、IDベースで整合性を保つ
-                     // 新規店舗のstaticDetails初期化など
+                     // 店舗付随データの整合性確保
                      masterStores.forEach(s => {
                          if (!staticDetails[s.id]) {
                              staticDetails[s.id] = { staff: ["スタッフA", "スタッフB"], competitors: [] };
@@ -819,17 +850,47 @@
                      localStorage.setItem("naoru_competitor_data", JSON.stringify(competitorData));
                  }
 
-                 // 2. 実績データの更新
+                 // 2. 店舗実績データの更新
                  if (json.data) {
                      monthlyData = { ...monthlyData, ...json.data };
-                     localStorage.setItem("naoru_monthly_data", JSON.stringify(monthlyData));
                  }
                  
-                 // 3. UI更新
-                 initInputTab(); // 店舗セレクトボックスの再描画
+                 // 3. スタッフ実績データの更新 & スタッフマスタの動的更新
+                 if (json.staffData && Array.isArray(json.staffData)) {
+                     const storeStaffMap = {}; // storeId -> Set(staffName)
+
+                     json.staffData.forEach(row => {
+                         // 実績データのマージ
+                         const key = getStaffKey(row.storeId, row.year, row.month, row.media, row.staffName);
+                         if (!monthlyData[key]) monthlyData[key] = {};
+                         monthlyData[key] = { ...monthlyData[key], newClients: row.newClients, joins: row.joins };
+
+                         // スタッフ名の収集
+                         if (!storeStaffMap[row.storeId]) storeStaffMap[row.storeId] = new Set();
+                         storeStaffMap[row.storeId].add(row.staffName);
+                     });
+
+                     // staticDetailsのスタッフリストを更新
+                     Object.keys(storeStaffMap).forEach(sId => {
+                         const id = parseInt(sId);
+                         if (!staticDetails[id]) staticDetails[id] = { staff: [], competitors: [] };
+                         
+                         // 既存のスタッフリストにない名前を追加（順序保持のためSetからArrayへマージ）
+                         const newStaff = Array.from(storeStaffMap[sId]);
+                         const currentStaff = staticDetails[id].staff || [];
+                         const mergedStaff = [...new Set([...currentStaff, ...newStaff])];
+                         staticDetails[id].staff = mergedStaff;
+                     });
+                     localStorage.setItem("naoru_static_details", JSON.stringify(staticDetails));
+                 }
+                 
+                 localStorage.setItem("naoru_monthly_data", JSON.stringify(monthlyData));
+                 
+                 // 4. UI更新
+                 initInputTab(); 
                  refreshActiveData(); 
                  renderInputTable(); 
-                 alert("店舗マスタと実績データを読み込みました");
+                 alert("店舗マスタ、店舗実績、スタッフ実績を読み込みました");
 
              } catch(e) { 
                  console.error(e); 
@@ -1043,12 +1104,15 @@
                     parts: [{ text: h.text }]
                 }));
                 // Add current message
-                contents.push({ role: "user", parts: [{ text: `System: ${systemPrompt}\nUser: ${userMessage}` }] });
+                contents.push({ role: "user", parts: [{ text: userMessage }] });
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: contents })
+                    body: JSON.stringify({ 
+                        contents: contents,
+                        systemInstruction: { parts: [{ text: systemPrompt }] }
+                    })
                 });
 
                 const data = await response.json();
@@ -1096,7 +1160,7 @@ ${text}
             // Use a simple one-off call
             const apiKey = localStorage.getItem("naoru_gemini_api_key");
             try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
@@ -1139,10 +1203,6 @@ ${text}
             const btn = document.getElementById('compUpdateBtn');
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
             
-            // Dummy logic powered by AI hallucination for demo (since we can't really scrape google maps here easily without a dedicated tool/backend)
-            // Or ask AI to "imagine" competitors based on station name if available
-            // Let's ask AI to generate hypothetical competitors for the area
-            
             const prompt = `
 ${store.store}駅周辺の整体院の競合として考えられる、仮想の（または有名な）競合店データを3つ生成してください。
 JSON形式で配列のみを返してください。
@@ -1150,7 +1210,7 @@ JSON形式で配列のみを返してください。
 `;
             const apiKey = localStorage.getItem("naoru_gemini_api_key");
             try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
