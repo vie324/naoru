@@ -1121,6 +1121,10 @@
                 const loadingEl = document.getElementById(loadingId);
                 if (loadingEl) loadingEl.remove();
 
+                if (data.error) {
+                    throw new Error(data.error.message || 'API Error');
+                }
+
                 if (data.candidates && data.candidates[0].content) {
                     const reply = data.candidates[0].content.parts[0].text;
                     appendMessage('ai', marked.parse(reply));
@@ -1166,6 +1170,11 @@ ${text}
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                 });
                 const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error.message || 'API Error');
+                }
+
                 const jsonText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
                 const result = JSON.parse(jsonText);
 
@@ -1188,7 +1197,7 @@ ${text}
 
             } catch (e) {
                 console.error(e);
-                alert("解析に失敗しました。AIがJSONを返せなかった可能性があります。");
+                alert("解析に失敗しました。: " + e.message);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
@@ -1216,6 +1225,11 @@ JSON形式で配列のみを返してください。
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                 });
                 const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error.message || 'API Error');
+                }
+
                 const jsonText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
                 const result = JSON.parse(jsonText);
 
@@ -1227,7 +1241,7 @@ JSON形式で配列のみを返してください。
                 
             } catch(e) {
                 console.error(e);
-                alert("競合調査に失敗しました");
+                alert("競合調査に失敗しました: " + e.message);
             } finally {
                 btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> AI調査開始';
             }
