@@ -86,8 +86,8 @@
         .media-switch-btn.referral i { color: var(--referral-color); }
 
         /* Dashboard View Toggle */
-        .dash-view-toggle { display: inline-flex; background: #e2e8f0; padding: 4px; border-radius: 8px; }
-        .dash-toggle-btn { padding: 6px 16px; font-size: 0.8rem; font-weight: 700; border-radius: 6px; cursor: pointer; color: #64748b; transition: all 0.2s; }
+        .dash-view-toggle { display: inline-flex; background: #e2e8f0; padding: 4px; border-radius: 8px; flex-wrap: wrap; }
+        .dash-toggle-btn { padding: 6px 12px; font-size: 0.75rem; font-weight: 700; border-radius: 6px; cursor: pointer; color: #64748b; transition: all 0.2s; white-space: nowrap; }
         .dash-toggle-btn.active { background: white; color: var(--brand-color); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
         /* Progress Bar */
@@ -108,8 +108,8 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Enhanced AI Mode Toggle */
-        .ai-mode-container { background-color: #e2e8f0; padding: 4px; border-radius: 8px; display: flex; position: relative; width: 100%; max-width: 300px; }
-        .ai-mode-btn { flex: 1; padding: 8px 12px; font-size: 0.8rem; font-weight: 600; border-radius: 6px; text-align: center; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px; border: none; color: #64748b; }
+        .ai-mode-container { background-color: #e2e8f0; padding: 4px; border-radius: 8px; display: flex; position: relative; width: 100%; max-width: 320px; }
+        .ai-mode-btn { flex: 1; padding: 8px 12px; font-size: 0.75rem; font-weight: 600; border-radius: 6px; text-align: center; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 4px; border: none; color: #64748b; white-space: nowrap; }
         .ai-mode-btn.active { background-color: white; color: var(--brand-color); box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-weight: 700; }
         .ai-mode-btn:hover:not(.active) { background-color: rgba(255,255,255,0.5); color: #475569; }
 
@@ -190,10 +190,11 @@
         <div id="view-dashboard" class="space-y-8">
             <!-- Dashboard Controls -->
             <div class="flex flex-col lg:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm gap-4">
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-4 w-full lg:w-auto">
                     <div class="dash-view-toggle">
                         <div onclick="switchDashboardView('store')" id="dash-view-store" class="dash-toggle-btn active"><i class="fa-solid fa-store mr-1"></i> 店舗別ランキング</div>
                         <div onclick="switchDashboardView('media')" id="dash-view-media" class="dash-toggle-btn"><i class="fa-solid fa-layer-group mr-1"></i> 媒体別 全体分析</div>
+                        <div onclick="switchDashboardView('store-media')" id="dash-view-store-media" class="dash-toggle-btn"><i class="fa-solid fa-chart-pie mr-1"></i> 店舗別 媒体分析</div>
                     </div>
                 </div>
 
@@ -204,6 +205,14 @@
                     <div onclick="switchDashboardMedia('flyer')" id="dash-media-flyer" class="media-switch-btn flyer inactive"><i class="fa-solid fa-paper-plane"></i> チラシ</div>
                     <div onclick="switchDashboardMedia('hp')" id="dash-media-hp" class="media-switch-btn hp inactive"><i class="fa-solid fa-globe"></i> HP</div>
                     <div onclick="switchDashboardMedia('referral')" id="dash-media-referral" class="media-switch-btn referral inactive"><i class="fa-solid fa-user-group"></i> 紹介</div>
+                </div>
+
+                <!-- Store Select for Store-Media View -->
+                <div id="dash-store-select-container" class="hidden items-center gap-2">
+                    <span class="text-sm font-bold text-slate-700 whitespace-nowrap">店舗:</span>
+                    <select id="dashStoreSelect" onchange="updateDashboardView()" class="bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-lg p-2.5 focus:ring-brand focus:border-brand outline-none font-bold">
+                        <!-- Populated by JS -->
+                    </select>
                 </div>
 
                 <div class="flex items-center gap-2">
@@ -254,7 +263,7 @@
                 </section>
             </div>
 
-            <!-- VIEW 2: MEDIA ANALYSIS -->
+            <!-- VIEW 2: MEDIA ANALYSIS (Overall) -->
             <div id="dashboard-media-view" class="hidden space-y-8">
                 <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div class="bg-white rounded-xl shadow-sm p-6 lg:col-span-1">
@@ -283,6 +292,15 @@
                             <tbody class="divide-y divide-slate-100" id="mediaSummaryTableBody"></tbody>
                         </table>
                     </div>
+                </section>
+            </div>
+
+            <!-- VIEW 3: STORE SPECIFIC MEDIA ANALYSIS (New) -->
+            <div id="dashboard-store-media-view" class="hidden space-y-8">
+                 <section class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-bar text-brand"></i> 店舗別 媒体パフォーマンス分析</h3>
+                    <div class="chart-container" style="height: 350px;"><canvas id="storeMediaChart"></canvas></div>
+                    <div class="mt-6 text-xs text-slate-500 text-right">※ 想定ROIは、(平均LTV × 入会数) ÷ 広告費 で算出した参考値です。</div>
                 </section>
             </div>
         </div>
@@ -331,6 +349,7 @@
                             <h4 class="text-sm font-bold text-slate-700 flex items-center gap-2"><i class="fa-solid fa-crosshairs text-slate-500"></i> エリア競合比較</h4>
                             <button onclick="updateCompetitorInfo()" id="compUpdateBtn" class="text-xs bg-brand hover:bg-rose-400 text-white font-bold px-3 py-1 rounded transition flex items-center gap-1 shadow-sm"><i class="fa-solid fa-arrows-rotate"></i> AI調査開始</button>
                         </div>
+                        <p class="text-[10px] text-slate-400 mb-2">※Google等の情報を元に実在する競合店を検索します</p>
                         <div id="competitorList" class="space-y-2 max-h-[300px] overflow-y-auto pr-1"></div>
                     </div>
                 </div>
@@ -343,11 +362,11 @@
                                     <div class="bg-gradient-to-r from-brand to-rose-400 w-10 h-10 rounded-full flex items-center justify-center text-white border-2 border-white shadow"><i class="fa-solid fa-user-tie text-lg"></i></div>
                                     <span class="absolute -bottom-1 -right-1 bg-green-500 w-3 h-3 rounded-full border-2 border-slate-800"></span>
                                 </div>
-                                <div><h3 class="font-bold text-base">AI酒井くん <span class="text-xs font-normal text-slate-400 ml-2">Online</span></h3><p class="text-[10px] text-slate-400">キャッチーな広告表現を生成します</p></div>
+                                <div><h3 class="font-bold text-base">AI酒井くん <span class="text-xs font-normal text-slate-400 ml-2">Pro Consultant</span></h3><p class="text-[10px] text-slate-400">集客・売上UPのプロフェッショナル</p></div>
                             </div>
                             <div class="ai-mode-container">
                                 <button onclick="setAiMode('analyze')" id="mode-analyze" class="ai-mode-btn active"><i class="fa-solid fa-chart-pie"></i> 現状分析</button>
-                                <button onclick="setAiMode('copywrite')" id="mode-copywrite" class="ai-mode-btn inactive"><i class="fa-solid fa-pen-nib"></i> HPB原稿作成</button>
+                                <button onclick="setAiMode('copywrite')" id="mode-copywrite" class="ai-mode-btn inactive"><i class="fa-solid fa-pen-nib"></i> 原稿作成</button>
                             </div>
                         </div>
                         <details class="bg-slate-700/50 rounded border border-slate-600">
@@ -612,28 +631,38 @@
             currentDashboardView = viewMode;
             document.getElementById('dash-view-store').className = `dash-toggle-btn ${viewMode === 'store' ? 'active' : ''}`;
             document.getElementById('dash-view-media').className = `dash-toggle-btn ${viewMode === 'media' ? 'active' : ''}`;
+            document.getElementById('dash-view-store-media').className = `dash-toggle-btn ${viewMode === 'store-media' ? 'active' : ''}`;
             
             const mediaControls = document.getElementById('dash-media-controls');
             if (mediaControls) mediaControls.style.display = viewMode === 'store' ? 'flex' : 'none';
+
+            const storeSelect = document.getElementById('dash-store-select-container');
+            if (storeSelect) storeSelect.style.display = viewMode === 'store-media' ? 'flex' : 'none';
 
             updateDashboardView();
         }
 
         function updateDashboardView() {
             refreshActiveData(); // Ensure data is fresh
+            document.getElementById('dashboard-store-view').classList.add('hidden');
+            document.getElementById('dashboard-media-view').classList.add('hidden');
+            document.getElementById('dashboard-store-media-view').classList.add('hidden');
+
             if (currentDashboardView === 'store') {
                 document.getElementById('dashboard-store-view').classList.remove('hidden');
-                document.getElementById('dashboard-media-view').classList.add('hidden');
                 initComparisonCharts();
                 populateComparisonTable();
                 updateDashboardSummaries();
-            } else {
-                document.getElementById('dashboard-store-view').classList.add('hidden');
+            } else if (currentDashboardView === 'media') {
                 document.getElementById('dashboard-media-view').classList.remove('hidden');
                 initMediaAnalysisCharts();
                 populateMediaSummaryTable();
+            } else if (currentDashboardView === 'store-media') {
+                document.getElementById('dashboard-store-media-view').classList.remove('hidden');
+                initStoreMediaChart();
             }
             initTargetDateSelect();
+            initDashStoreSelect(); // For store-media view
         }
 
         function switchDashboardMedia(media) {
@@ -915,6 +944,20 @@
                 }
             });
         }
+        function initDashStoreSelect() {
+            const select = document.getElementById('dashStoreSelect');
+            select.innerHTML = '';
+            if (masterStores.length === 0) {
+                select.innerHTML = '<option>店舗なし</option>';
+            } else {
+                masterStores.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.text = `${s.store}店`;
+                    select.appendChild(opt);
+                });
+            }
+        }
         function changeTargetDate() {
             const val = document.getElementById('targetDateSelect').value;
             const [y, m] = val.split('-');
@@ -945,9 +988,17 @@
         let currentStoreId = 0; 
         let aiMode = 'analyze'; 
         let chatHistory = [];
+        
+        // --- UPDATED SYSTEM PROMPTS FOR PROFESSIONAL CONSULTANT MODE ---
         const SYSTEM_PROMPTS = {
-            analyze: "あなたは整体院経営のプロフェッショナルなコンサルタント「酒井くん」です。提供されたKPIデータ（CPA、入会率、PV数など）を厳しく分析し、具体的な改善策を提案してください。口調は論理的かつ少し辛口でお願いします。",
-            copywrite: "あなたは天才的なコピーライター「酒井くん」です。ターゲット層の心に刺さる、ホットペッパービューティーや広告用のキャッチコピーと紹介文を作成してください。感情に訴えかけるエモーショナルな表現が得意です。"
+            analyze: `あなたは整体院・サロン経営の集客・売上UPに特化したプロのコンサルタント「酒井くん」です。
+            提供されたKPIデータ（CPA、入会率、PV数など）に基づき、論理的な思考で課題を特定してください。
+            ただし、現場スタッフのモチベーションにも配慮した、実行可能で具体的な改善提案を行うことが得意です。
+            数字に厳しくありつつ、成功のためのパートナーとして振る舞ってください。`,
+            
+            copywrite: `あなたは天才的なコピーライター「酒井くん」です。
+            ターゲット層の心に刺さる、ホットペッパービューティーや広告用のキャッチコピーと紹介文を作成してください。
+            感情に訴えかけるエモーショナルな表現が得意ですが、文字数制限は機械的に厳密に守ります。`
         };
 
         function setAiMode(m) { 
@@ -960,7 +1011,7 @@
             document.getElementById('auditBtnText').innerText = btnText;
             
             // Reset Chat if needed or just notify
-            appendMessage('ai', m === 'analyze' ? '分析モードに切り替えました。店舗データに基づき課題を発見します。' : '原稿作成モードに切り替えました。ターゲットや強みを教えてください。');
+            appendMessage('ai', m === 'analyze' ? '分析モードに切り替えました。プロのコンサルタント視点で店舗データを分析します。' : '原稿作成モードに切り替えました。NAORU整体の強みを活かした原稿を作成します。');
         }
 
         function initDeepDive() {
@@ -980,7 +1031,6 @@
                 currentStoreId = parseInt(select.value);
             }
             renderStoreDetails();
-            // Don't reset chat history completely on simple refresh, only on store change
         }
 
         function renderStoreDetails() {
@@ -1048,15 +1098,35 @@
 ・競合状況: ${JSON.stringify(store.competitors)}
 ・特記事項: ${customInfo}
 
-上記のデータに基づき、現状の課題（集客面、営業面）と、来月の具体的なアクションプランを3つ提案してください。`;
+上記のデータに基づき、プロのコンサルタントとして現状の課題（集客面、営業面）を洗い出し、来月の具体的なアクションプランを3つ提案してください。
+スタッフが納得して動けるよう、論理的かつ前向きな理由付けを行ってください。`;
+
             } else {
+                // 原稿作成モード
+                // 課題の抽出（チャット履歴があればそれを利用するように指示）
                 userPrompt = `
 【原稿作成対象】${store.store}店
-・ターゲット/こだわり: ${customInfo}
-・現在のオファー: ¥${store.offer}
-・強み（データから推測）: 入会率${store.rate}%
+【ターゲット/こだわり】${customInfo}
+【現在のオファー】¥${store.offer}
+【NAORU整体の強み（固定要素）】
+・世界含め80店舗展開
+・AIを用いた最新の技術
+・根本から改善する整体
 
-上記の情報を元に、ホットペッパービューティーに掲載する「キャッチコピー（20文字以内）」と「紹介文（100文字程度）」を3パターン作成してください。`;
+【依頼内容】
+上記「強み」を活かし、かつ現状の課題（集客不足やターゲットのズレなど、もし直前の会話で分析していればそれを踏まえて）を解決するための原稿を作成してください。
+
+【厳守事項：文字数制限】
+以下の文字数制限を**絶対に**守ってください。
+※半角は0.5文字、全角は1.0文字としてカウントします。
+
+1. キャッチコピー：【絶対に50文字丁度】
+2. ボディコピー：【絶対に150文字丁度】
+3. クーポン名：【絶対に36文字丁度】
+
+出力形式：
+「キャッチコピー(XX文字): ...」のように、作成したテキストの横に計算した文字数を付記してください。
+`;
             }
 
             appendMessage('user', aiMode === 'analyze' ? '現状分析をお願いします。' : '原稿を作成してください。');
@@ -1213,9 +1283,15 @@ ${text}
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
             
             const prompt = `
-${store.store}駅周辺の整体院の競合として考えられる、仮想の（または有名な）競合店データを3つ生成してください。
+${store.store}駅周辺、または${store.store}エリアにある「整体院」の実在する競合店を検索してください。
+架空の店舗ではなく、Googleマップ等で確認できる可能性が高い【実在する店舗】を5〜10件リストアップしてください。
+（※正確な最新情報でなくても構いませんが、明らかな架空名称は避けてください）
+
 JSON形式で配列のみを返してください。
-各オブジェクトのキー: name(店名), price(初回価格数値), feature(短い特徴10文字以内)
+各オブジェクトのキー: 
+- name(店名)
+- price(初回価格の数値。不明なら予想される相場)
+- feature(短い特徴10文字以内)
 `;
             const apiKey = localStorage.getItem("naoru_gemini_api_key");
             try {
@@ -1303,6 +1379,52 @@ JSON形式で配列のみを返してください。
             });
         }
         
+        let storeMediaChart;
+        function initStoreMediaChart() {
+            const select = document.getElementById('dashStoreSelect');
+            const storeId = parseInt(select.value);
+            if (!storeId && storeId !== 0) return; // No store selected
+            
+            const mediaList = ['hpb', 'meta', 'honefix', 'flyer', 'hp', 'referral'];
+            const labels = { hpb: "HPB", meta: "Meta", honefix: "HONE", flyer: "チラシ", hp: "HP", referral: "紹介" };
+            const data = [];
+            
+            // 仮想LTV (プロコンサル用指標)
+            const ESTIMATED_LTV = 50000; 
+
+            mediaList.forEach(m => {
+                const rec = getMonthlyRecord(storeId, currentTargetYear, currentTargetMonth, m);
+                const spend = rec.adSpend || 0;
+                const newClients = rec.newClients || 0;
+                const joins = rec.joins || 0;
+                const cpa = newClients > 0 ? Math.round(spend / newClients) : 0;
+                // ROI (Return on Investment) - 広告費に対する利益回収率 (簡易計算: LTV * Joins / Spend)
+                const roi = spend > 0 ? Math.round(((ESTIMATED_LTV * joins) / spend) * 100) : 0;
+                
+                data.push({ label: labels[m], cpa: cpa, roi: roi });
+            });
+
+            if (storeMediaChart) storeMediaChart.destroy();
+            storeMediaChart = new Chart(document.getElementById('storeMediaChart'), {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.label),
+                    datasets: [
+                        { label: 'CPA (円)', data: data.map(d => d.cpa), backgroundColor: '#94a3b8', yAxisID: 'y', borderRadius: 4 },
+                        { label: '想定ROI (%)', data: data.map(d => d.roi), type: 'line', borderColor: '#e57172', borderWidth: 2, pointBackgroundColor: '#fff', yAxisID: 'y1' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { position: 'left', title: { display: true, text: 'CPA (円)' } },
+                        y1: { position: 'right', title: { display: true, text: '想定ROI (%)' }, grid: { drawOnChartArea: false } }
+                    }
+                }
+            });
+        }
+
         // --- Aggregation & Summaries ---
         function aggregateMediaStats(year, month) {
             const mediaList = ['hpb', 'meta', 'honefix', 'flyer', 'hp', 'referral'];
