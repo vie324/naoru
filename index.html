@@ -130,6 +130,11 @@
         /* Smart Parser Area */
         .smart-parser-area { background: #ffffff; border: 2px dashed #cbd5e1; transition: all 0.3s ease; }
         .smart-parser-area:hover, .smart-parser-area:focus-within { border-color: var(--brand-color); background: #fffcfc; }
+        
+        /* Trend Arrows */
+        .trend-up { color: #ef4444; } /* Red for bad if cost, or good if sales? Context dependent. Here red=warning usually, green=good */
+        .trend-down { color: #10b981; }
+        .trend-neutral { color: #94a3b8; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -230,6 +235,25 @@
                       <!-- Populated by JS -->
                 </div>
 
+                <!-- Budget Simulation Widget (New) -->
+                <div class="bg-slate-800 rounded-xl shadow-sm p-6 mb-8 text-white">
+                    <h3 class="text-sm font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-calculator text-brand"></i> コンサルタント用: 予算シミュレーター</h3>
+                    <div class="flex flex-col md:flex-row gap-4 items-end">
+                        <div>
+                            <label class="block text-xs text-slate-400 mb-1">現在の平均CPA</label>
+                            <div class="text-xl font-bold" id="simCurrentCpa">-</div>
+                        </div>
+                        <div class="flex-grow">
+                            <label class="block text-xs text-slate-400 mb-1">来月の目標新規数 (人)</label>
+                            <input type="number" id="simTargetNew" class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm w-full text-white focus:border-brand outline-none" placeholder="例: 30" oninput="runSimulation()">
+                        </div>
+                        <div class="text-right">
+                            <label class="block text-xs text-slate-400 mb-1">推定必要予算</label>
+                            <div class="text-2xl font-bold text-brand" id="simResultBudget">¥0</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Ranking Charts -->
                 <section class="bg-white rounded-xl shadow-sm p-6">
                     <div class="flex justify-between items-center mb-4">
@@ -297,7 +321,7 @@
 
             <!-- VIEW 3: STORE SPECIFIC MEDIA ANALYSIS (New) -->
             <div id="dashboard-store-media-view" class="hidden space-y-8">
-                 <section class="bg-white rounded-xl shadow-sm p-6">
+                 <section class="bg-white rounded-xl shadow-sm p-6 mb-8">
                     <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-chart-bar text-brand"></i> 店舗別 媒体パフォーマンス分析</h3>
                     
                     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
@@ -329,6 +353,32 @@
                         </table>
                     </div>
                     <div class="mt-2 text-[10px] text-slate-400 text-right">※ 想定ROIは、(平均LTV × 入会数) ÷ 広告費 で算出した参考値です。(LTV仮定: ¥50,000)</div>
+                </section>
+
+                <!-- New: Staff by Media Analysis -->
+                <section class="bg-white rounded-xl shadow-sm p-6">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-users-viewfinder text-indigo-600"></i> スタッフ別 媒体別成績 (媒体相性分析)</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2">
+                            <div class="chart-container" style="height: 350px;"><canvas id="staffMediaChart"></canvas></div>
+                        </div>
+                        <div class="lg:col-span-1">
+                            <div class="overflow-x-auto h-[350px] overflow-y-auto">
+                                <table class="min-w-full text-xs text-left text-slate-600 border border-slate-200">
+                                    <thead class="bg-slate-100 text-slate-700 font-bold sticky top-0">
+                                        <tr>
+                                            <th class="px-2 py-2 border-b">スタッフ</th>
+                                            <th class="px-2 py-2 border-b">媒体</th>
+                                            <th class="px-2 py-2 border-b text-right">新規</th>
+                                            <th class="px-2 py-2 border-b text-right">入会</th>
+                                            <th class="px-2 py-2 border-b text-right">率</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="staffMediaTableBody" class="divide-y divide-slate-100"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </section>
             </div>
         </div>
@@ -465,7 +515,7 @@
 
     </main>
 
-    <!-- Modals (unchanged) -->
+    <!-- Modals -->
     <!-- ... (Keep your modal HTML here) ... -->
     <div id="settingModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
         <div class="modal-overlay absolute w-full h-full bg-slate-900 opacity-50"></div>
@@ -759,7 +809,7 @@
             } else if (currentInputMedia === 'meta') {
                 headerHTML += `<th class="px-2 py-2 border-b text-center w-28">広告費</th><th class="px-2 py-2 border-b text-center w-20">新規</th><th class="px-2 py-2 border-b text-center w-20">入会</th><th class="px-2 py-2 border-b text-center w-20">CTR(%)</th><th class="px-2 py-2 border-b text-center w-20">CPC(円)</th><th class="px-2 py-2 border-b text-center w-20">CVR(%)</th><th class="px-2 py-2 border-b text-center bg-slate-100">CPA</th><th class="px-2 py-2 border-b text-center bg-slate-100">率</th></tr>`;
             } else if (currentInputMedia === 'honefix' || currentInputMedia === 'hp' || currentInputMedia === 'referral') {
-                headerHTML += `<th class="px-2 py-2 border-b text-center w-20">新規</th><th class="px-2 py-2 border-b text-center w-20">入会</th><th class="px-2 py-2 border-b text-center bg-slate-100">CPA</th><th class="px-2 py-2 border-b text-center bg-slate-100">率</th></tr>`;
+                headerHTML += `<th class="px-2 py-2 border-b text-center w-20">新規</th><th class="px-2 py-2 border-b text-center w-20">入会</th><th class="px-2 py-2 border-b text-center bg-slate-100">率</th></tr>`;
             } else if (currentInputMedia === 'flyer') {
                 headerHTML += `<th class="px-2 py-2 border-b text-center w-28">配布数(枚)</th><th class="px-2 py-2 border-b text-center w-28">広告費</th><th class="px-2 py-2 border-b text-center w-20">新規</th><th class="px-2 py-2 border-b text-center w-20">入会</th><th class="px-2 py-2 border-b text-center bg-slate-100">反響率(%)</th><th class="px-2 py-2 border-b text-center bg-slate-100">CPA</th><th class="px-2 py-2 border-b text-center bg-slate-100">率</th></tr>`;
             }
@@ -814,7 +864,7 @@
                     } else { // HONEFIX or HP or Referral
                         rowHTML += `<td class="px-2 py-2 border-b"><input type="number" class="input-cell" data-year="${year}" data-month="${month}" data-field="newClients" value="${rec.newClients}"></td>
                                     <td class="px-2 py-2 border-b"><input type="number" class="input-cell" data-year="${year}" data-month="${month}" data-field="joins" value="${rec.joins}"></td>
-                                    <td class="px-2 py-2 border-b"><div class="calc-cell">0</div></td><td class="px-2 py-2 border-b"><div class="calc-cell">${rate}%</div></td>`;
+                                    <td class="px-2 py-2 border-b"><div class="calc-cell">${rate}%</div></td>`;
                     }
                     const tr = document.createElement('tr');
                     tr.innerHTML = rowHTML;
@@ -994,17 +1044,62 @@
                 return;
             }
             const owners = [...new Set(activeStoreData.map(s => s.owner))];
+            
+            // Calculate previous month for MoM comparison
+            let prevYear = currentTargetYear;
+            let prevMonth = currentTargetMonth - 1;
+            if (prevMonth === 0) { prevMonth = 12; prevYear -= 1; }
+
             let html = '';
             owners.forEach(owner => {
                 const stores = activeStoreData.filter(d => d.owner === owner);
+                
+                // Current stats
                 const spend = stores.reduce((sum, s) => sum + getMonthlyRecord(s.id, currentTargetYear, currentTargetMonth, currentDashboardMedia).adSpend, 0);
                 const news = stores.reduce((sum, s) => sum + s.newClients, 0);
                 const joins = stores.reduce((sum, s) => sum + getMonthlyRecord(s.id, currentTargetYear, currentTargetMonth, currentDashboardMedia).joins, 0);
                 const cpa = news > 0 ? Math.round(spend/news) : 0;
                 const rate = news > 0 ? Math.round((joins/news)*100) : 0;
-                html += `<div class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-${owner.includes("伊藤") ? 'brand' : 'slate-600'} relative overflow-hidden"><h2 class="text-xl font-bold text-slate-800 mb-1">${owner}オーナー <span class="text-sm font-normal text-slate-500">(グループ)</span></h2><div class="grid grid-cols-2 gap-4 mt-4"><div class="bg-${owner.includes("伊藤") ? 'brand-light' : 'slate-100'} p-3 rounded-lg"><p class="text-xs text-slate-500 mb-1">平均CPA</p><p class="text-2xl font-bold text-${owner.includes("伊藤") ? 'brand' : 'slate-700'}">¥${cpa.toLocaleString()}</p></div><div class="bg-slate-50 p-3 rounded-lg"><p class="text-xs text-slate-500 mb-1">全体入会率</p><p class="text-2xl font-bold text-slate-700">${rate}%</p></div></div></div>`;
+
+                // Previous stats
+                let prevSpend = 0, prevNews = 0;
+                stores.forEach(s => {
+                    const r = getMonthlyRecord(s.id, prevYear, prevMonth, currentDashboardMedia);
+                    prevSpend += r.adSpend || 0;
+                    prevNews += r.newClients || 0;
+                });
+                const prevCpa = prevNews > 0 ? Math.round(prevSpend/prevNews) : 0;
+                
+                // MoM Logic
+                let cpaTrendHtml = '<span class="text-xs text-slate-400 ml-1">(-)</span>';
+                if(prevCpa > 0 && cpa > 0) {
+                    const diff = cpa - prevCpa;
+                    if(diff > 0) cpaTrendHtml = `<span class="text-xs trend-up ml-1"><i class="fa-solid fa-arrow-trend-up"></i> +¥${diff.toLocaleString()}</span>`; // Higher CPA is bad usually, red
+                    else if(diff < 0) cpaTrendHtml = `<span class="text-xs trend-down ml-1"><i class="fa-solid fa-arrow-trend-down"></i> ¥${diff.toLocaleString()}</span>`; // Lower CPA is good, green
+                }
+
+                html += `<div class="bg-white rounded-xl shadow-sm p-6 border-t-4 border-${owner.includes("伊藤") ? 'brand' : 'slate-600'} relative overflow-hidden"><h2 class="text-xl font-bold text-slate-800 mb-1">${owner}オーナー <span class="text-sm font-normal text-slate-500">(グループ)</span></h2><div class="grid grid-cols-2 gap-4 mt-4"><div class="bg-${owner.includes("伊藤") ? 'brand-light' : 'slate-100'} p-3 rounded-lg"><p class="text-xs text-slate-500 mb-1">平均CPA ${cpaTrendHtml}</p><p class="text-2xl font-bold text-${owner.includes("伊藤") ? 'brand' : 'slate-700'}">¥${cpa.toLocaleString()}</p></div><div class="bg-slate-50 p-3 rounded-lg"><p class="text-xs text-slate-500 mb-1">全体入会率</p><p class="text-2xl font-bold text-slate-700">${rate}%</p></div></div></div>`;
             });
             document.getElementById('dashboard-summaries').innerHTML = html;
+            
+            // Run Sim init
+            runSimulation();
+        }
+
+        function runSimulation() {
+            // Calculate current average CPA across all stores for selected media
+            let totalSpend = 0, totalNew = 0;
+            activeStoreData.forEach(s => {
+                const r = getMonthlyRecord(s.id, currentTargetYear, currentTargetMonth, currentDashboardMedia);
+                totalSpend += r.adSpend; totalNew += r.newClients;
+            });
+            const avgCpa = totalNew > 0 ? Math.round(totalSpend / totalNew) : 0;
+            
+            document.getElementById('simCurrentCpa').innerText = `¥${avgCpa.toLocaleString()}`;
+            
+            const target = parseInt(document.getElementById('simTargetNew').value) || 0;
+            const requiredBudget = avgCpa * target;
+            document.getElementById('simResultBudget').innerText = `¥${requiredBudget.toLocaleString()}`;
         }
 
         // Deep Dive Logic (UNCHANGED)
@@ -1337,33 +1432,32 @@
         }
         
         let storeMediaChart;
+        let staffMediaChart; // New Staff Chart
+
         function initStoreMediaChart() {
             const select = document.getElementById('dashStoreSelect');
             const storeId = parseInt(select.value);
-            if (!storeId && storeId !== 0) return; // No store selected
+            if (!storeId && storeId !== 0) return; 
             
             const mediaList = ['hpb', 'meta', 'honefix', 'flyer', 'hp', 'referral'];
             const labels = { hpb: "HPB", meta: "Meta", honefix: "HONE", flyer: "チラシ", hp: "HP", referral: "紹介" };
             const chartColors = mediaList.map(m => mediaColors[m]);
             const data = [];
-            
-            // 仮想LTV (プロコンサル用指標)
             const ESTIMATED_LTV = 50000; 
 
+            // -- Media Data Aggregation --
             mediaList.forEach(m => {
                 const rec = getMonthlyRecord(storeId, currentTargetYear, currentTargetMonth, m);
                 const spend = rec.adSpend || 0;
                 const newClients = rec.newClients || 0;
                 const joins = rec.joins || 0;
                 const cpa = newClients > 0 ? Math.round(spend / newClients) : 0;
-                // ROI (Return on Investment)
                 const roi = spend > 0 ? Math.round(((ESTIMATED_LTV * joins) / spend) * 100) : 0;
                 const rate = newClients > 0 ? Math.round((joins / newClients) * 100) : 0;
-                
                 data.push({ label: labels[m], new: newClients, cpa: cpa, spend: spend, joins: joins, roi: roi, rate: rate, color: mediaColors[m] });
             });
 
-            // Update Table
+            // Update Media Table
             const tbody = document.getElementById('storeMediaTableBody');
             tbody.innerHTML = '';
             data.forEach(d => {
@@ -1384,41 +1478,76 @@
                 data: {
                     labels: data.map(d => d.label),
                     datasets: [
-                        { 
-                            label: '新規集客数 (人)', 
-                            data: data.map(d => d.new), 
-                            backgroundColor: chartColors, 
-                            yAxisID: 'y', 
-                            order: 2,
-                            borderRadius: 4,
-                            datalabels: { color: 'white', display: true, anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v : '' }
-                        },
-                        { 
-                            label: 'CPA (円)', 
-                            data: data.map(d => d.cpa), 
-                            type: 'line', 
-                            borderColor: '#e57172', 
-                            borderWidth: 2, 
-                            pointBackgroundColor: '#fff', 
-                            pointBorderColor: '#e57172',
-                            pointRadius: 4,
-                            yAxisID: 'y1', 
-                            order: 1,
-                            datalabels: { display: false }
-                        }
+                        { label: '新規集客数 (人)', data: data.map(d => d.new), backgroundColor: chartColors, yAxisID: 'y', order: 2, borderRadius: 4, datalabels: { color: 'white', display: true, anchor: 'center', align: 'center', formatter: (v) => v > 0 ? v : '' } },
+                        { label: 'CPA (円)', data: data.map(d => d.cpa), type: 'line', borderColor: '#e57172', borderWidth: 2, pointBackgroundColor: '#fff', pointBorderColor: '#e57172', pointRadius: 4, yAxisID: 'y1', order: 1, datalabels: { display: false } }
                     ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: true, position: 'top' },
-                        datalabels: { font: { weight: 'bold' } }
-                    },
-                    scales: {
-                        y: { position: 'left', title: { display: true, text: '新規集客数 (人)' }, grid: { borderDash: [2, 2] } },
-                        y1: { position: 'right', title: { display: true, text: 'CPA (円)' }, grid: { drawOnChartArea: false }, min: 0 }
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: true, position: 'top' }, datalabels: { font: { weight: 'bold' } } },
+                    scales: { y: { position: 'left', title: { display: true, text: '新規集客数 (人)' }, grid: { borderDash: [2, 2] } }, y1: { position: 'right', title: { display: true, text: 'CPA (円)' }, grid: { drawOnChartArea: false }, min: 0 } }
+                }
+            });
+
+            // -- Staff x Media Data Aggregation --
+            const details = staticDetails[storeId] || { staff: [] };
+            const staffList = details.staff;
+            
+            // Build datasets for Stacked Bar Chart (Each media is a stack layer)
+            const staffDatasets = mediaList.map((m, index) => {
+                return {
+                    label: labels[m],
+                    data: staffList.map(sName => {
+                        const sRec = getStaffRecord(storeId, currentTargetYear, currentTargetMonth, m, sName);
+                        return sRec.newClients || 0;
+                    }),
+                    backgroundColor: mediaColors[m],
+                    stack: 'Stack 0',
+                };
+            });
+
+            // Update Staff Media Chart
+            if (staffMediaChart) staffMediaChart.destroy();
+            staffMediaChart = new Chart(document.getElementById('staffMediaChart'), {
+                type: 'bar',
+                data: {
+                    labels: staffList, // X-axis: Staff Names
+                    datasets: staffDatasets
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' }, title: { display: true, text: '媒体別 新規対応数' } },
+                    scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }
+                }
+            });
+
+            // Update Staff Media Table (Detailed breakdown)
+            const staffTbody = document.getElementById('staffMediaTableBody');
+            staffTbody.innerHTML = '';
+            staffList.forEach(sName => {
+                let totalNew = 0, totalJoins = 0;
+                mediaList.forEach(m => {
+                    const sRec = getStaffRecord(storeId, currentTargetYear, currentTargetMonth, m, sName);
+                    if (sRec.newClients > 0) {
+                        const rate = Math.round((sRec.joins / sRec.newClients) * 100);
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `<td class="px-2 py-2 border-b font-bold">${sName}</td>
+                                        <td class="px-2 py-2 border-b" style="color:${mediaColors[m]}">${labels[m]}</td>
+                                        <td class="px-2 py-2 border-b text-right">${sRec.newClients}</td>
+                                        <td class="px-2 py-2 border-b text-right">${sRec.joins}</td>
+                                        <td class="px-2 py-2 border-b text-right">${rate}%</td>`;
+                        staffTbody.appendChild(tr);
+                        totalNew += sRec.newClients;
+                        totalJoins += sRec.joins;
                     }
+                });
+                // Total Row for Staff
+                if(totalNew > 0) {
+                    const rate = Math.round((totalJoins / totalNew) * 100);
+                    const tr = document.createElement('tr');
+                    tr.className = "bg-slate-50 font-bold";
+                    tr.innerHTML = `<td class="px-2 py-2 border-b">${sName} Total</td><td class="px-2 py-2 border-b">-</td><td class="px-2 py-2 border-b text-right">${totalNew}</td><td class="px-2 py-2 border-b text-right">${totalJoins}</td><td class="px-2 py-2 border-b text-right">${rate}%</td>`;
+                    staffTbody.appendChild(tr);
                 }
             });
         }
