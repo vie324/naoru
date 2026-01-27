@@ -1871,7 +1871,19 @@
         // NEW TAB FUNCTIONS: COMPETITOR ANALYSIS
         // ===========================================
 
-        const BACKEND_API = 'http://localhost:3001';
+        // Auto-detect API URL based on environment
+        const BACKEND_API = (() => {
+            const hostname = window.location.hostname;
+            // Local development
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                return 'http://localhost:3001';
+            }
+            // Vercel deployment - use relative API paths
+            return window.location.origin;
+        })();
+
+        console.log('🌐 Backend API:', BACKEND_API);
+
         let competitorCache = {};
 
         // Demo data generators
@@ -1933,7 +1945,7 @@
             resultsDiv.innerHTML = '<div class="text-center py-8"><i class="fa-solid fa-spinner fa-spin text-4xl text-indigo-600"></i><p class="mt-2 text-slate-600">競合店舗を検索中...</p></div>';
 
             try {
-                const response = await fetch(`${BACKEND_API}/api/competitors/track`, {
+                const response = await fetch(`${BACKEND_API}/api/competitors-track`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ area, service })
@@ -2011,7 +2023,7 @@
             resultsDiv.innerHTML = '<div class="text-center py-8"><i class="fa-solid fa-spinner fa-spin text-4xl text-amber-600"></i><p class="mt-2 text-slate-600">検索順位を確認中...</p></div>';
 
             try {
-                const response = await fetch(`${BACKEND_API}/api/ranking/bulk-check`, {
+                const response = await fetch(`${BACKEND_API}/api/ranking-check`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ keywords, shopName })
@@ -2079,7 +2091,7 @@
 
             try {
                 // Try to fetch reviews from backend
-                const response = await fetch(`${BACKEND_API}/api/reviews/fetch`, {
+                const response = await fetch(`${BACKEND_API}/api/reviews-fetch`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url })
@@ -2189,7 +2201,7 @@
 
         async function runMarketAnalysis(area, service) {
             try {
-                const response = await fetch(`${BACKEND_API}/api/market/analysis`, {
+                const response = await fetch(`${BACKEND_API}/api/market-analysis`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ area, service })
