@@ -1871,8 +1871,54 @@
         // NEW TAB FUNCTIONS: COMPETITOR ANALYSIS
         // ===========================================
 
-        const BACKEND_API = 'http://localhost:3001';
+        // Auto-detect API URL based on environment
+        const BACKEND_API = (() => {
+            const hostname = window.location.hostname;
+            // Local development
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                return 'http://localhost:3001';
+            }
+            // Vercel deployment - use relative API paths
+            return window.location.origin;
+        })();
+
+        console.log('🌐 Backend API:', BACKEND_API);
+
         let competitorCache = {};
+
+        // Demo data generators
+        function generateDemoCompetitorData(area, service) {
+            const shopNames = ['リラクゼーションスペース', '癒しの整体院', 'ボディケアサロン', 'ヘルスケア整体', 'リフレッシュ館', '快適整体', 'もみほぐし専門店', 'からだリセット', 'ストレッチ整体', 'トータルケア'];
+            const basePrice = [2980, 3500, 3980, 4500, 4980, 5500];
+
+            return shopNames.map((name, i) => ({
+                name: `${name} ${area}店`,
+                url: `https://beauty.hotpepper.jp/demo/${i}`,
+                price: `¥${basePrice[i % basePrice.length].toLocaleString()}`,
+                reviewCount: `${50 + Math.floor(Math.random() * 200)}`,
+                rating: `${(3.5 + Math.random() * 1.5).toFixed(1)}`,
+                rank: i + 1
+            })).slice(0, 10);
+        }
+
+        function runMarketAnalysisWithDemoData(area, service) {
+            const demoAnalysis = {
+                area,
+                service,
+                competitorCount: 10,
+                averagePrice: 3980,
+                priceRange: { min: 2980, max: 5500 },
+                averageReviewCount: 120,
+                topShops: [
+                    { name: `リラクゼーションスペース ${area}店`, price: '¥2,980', reviewCount: '230' },
+                    { name: `癒しの整体院 ${area}店`, price: '¥3,500', reviewCount: '180' },
+                    { name: `ボディケアサロン ${area}店`, price: '¥3,980', reviewCount: '150' },
+                    { name: `ヘルスケア整体 ${area}店`, price: '¥4,500', reviewCount: '120' },
+                    { name: `リフレッシュ館 ${area}店`, price: '¥4,980', reviewCount: '90' }
+                ]
+            };
+            displayMarketAnalysis(demoAnalysis);
+        }
 
         function initCompetitorTab() {
             // Initialize store select for ranking monitor
@@ -1899,7 +1945,7 @@
             resultsDiv.innerHTML = '<div class="text-center py-8"><i class="fa-solid fa-spinner fa-spin text-4xl text-indigo-600"></i><p class="mt-2 text-slate-600">競合店舗を検索中...</p></div>';
 
             try {
-                const response = await fetch(`${BACKEND_API}/api/competitors/track`, {
+                const response = await fetch(`${BACKEND_API}/api/competitors-track`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ area, service })
@@ -1917,11 +1963,19 @@
                 runMarketAnalysis(area, service);
 
             } catch (error) {
-                resultsDiv.innerHTML = `<div class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
-                    <p class="font-bold">エラー</p>
-                    <p class="text-sm">${error.message}</p>
-                    <p class="text-xs mt-2">バックエンドサーバーが起動していることを確認してください。</p>
-                </div>`;
+                // Use demo data if backend is not available
+                console.log('Backend not available, using demo data');
+                const demoData = generateDemoCompetitorData(area, service);
+                displayCompetitorResults(demoData, false);
+                runMarketAnalysisWithDemoData(area, service);
+
+                // Show info message
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-blue-800';
+                infoDiv.innerHTML = `<p class="font-bold flex items-center gap-2"><i class="fa-solid fa-info-circle"></i> デモモード</p>
+                    <p class="text-sm">バックエンドサーバーに接続できないため、デモデータを表示しています。</p>
+                    <p class="text-xs mt-2">実際のデータを取得するには、<code class="bg-blue-100 px-2 py-1 rounded">cd backend && npm start</code> でサーバーを起動してください。</p>`;
+                resultsDiv.parentNode.insertBefore(infoDiv, resultsDiv);
             }
         }
 
@@ -1969,7 +2023,7 @@
             resultsDiv.innerHTML = '<div class="text-center py-8"><i class="fa-solid fa-spinner fa-spin text-4xl text-amber-600"></i><p class="mt-2 text-slate-600">検索順位を確認中...</p></div>';
 
             try {
-                const response = await fetch(`${BACKEND_API}/api/ranking/bulk-check`, {
+                const response = await fetch(`${BACKEND_API}/api/ranking-check`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ keywords, shopName })
@@ -1984,10 +2038,18 @@
                 displayRankingResults(result.data);
 
             } catch (error) {
-                resultsDiv.innerHTML = `<div class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
-                    <p class="font-bold">エラー</p>
-                    <p class="text-sm">${error.message}</p>
-                </div>`;
+                // Use demo data
+                const demoRankings = keywords.map((keyword, i) => ({
+                    keyword,
+                    rank: Math.floor(Math.random() * 20) + 1,
+                    date: new Date().toISOString()
+                }));
+                displayRankingResults(demoRankings);
+
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-blue-800 text-sm';
+                infoDiv.innerHTML = `<i class="fa-solid fa-info-circle mr-2"></i> デモモードで表示しています`;
+                resultsDiv.parentNode.insertBefore(infoDiv, resultsDiv);
             }
         }
 
@@ -2024,9 +2086,12 @@
             const resultsDiv = document.getElementById('reviewAnalysisResults');
             resultsDiv.innerHTML = '<div class="text-center py-8"><i class="fa-solid fa-spinner fa-spin text-4xl text-green-600"></i><p class="mt-2 text-slate-600">口コミを取得・分析中...</p></div>';
 
+            let reviewTexts = '';
+            let reviewCount = 0;
+
             try {
-                // Fetch reviews from backend
-                const response = await fetch(`${BACKEND_API}/api/reviews/fetch`, {
+                // Try to fetch reviews from backend
+                const response = await fetch(`${BACKEND_API}/api/reviews-fetch`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url })
@@ -2038,8 +2103,29 @@
                     throw new Error(result.error);
                 }
 
+                reviewTexts = result.data.map(r => r.text).join('\n\n');
+                reviewCount = result.count;
+            } catch (error) {
+                // Use demo reviews if backend not available
+                console.log('Backend not available, using demo reviews');
+                const demoReviews = [
+                    '施術が丁寧で、腰痛が改善しました。スタッフの方も親切でした。',
+                    '駅から近くて通いやすいです。予約も取りやすく満足しています。',
+                    '初回割引があってお得でした。次回も利用したいと思います。',
+                    '説明が分かりやすく、安心して施術を受けられました。',
+                    'もう少し料金が安いと嬉しいですが、効果はありました。'
+                ];
+                reviewTexts = demoReviews.join('\n\n');
+                reviewCount = demoReviews.length;
+
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-blue-800 text-sm';
+                infoDiv.innerHTML = `<i class="fa-solid fa-info-circle mr-2"></i> デモモード: サンプル口コミでAI分析を実行しています`;
+                resultsDiv.parentNode.insertBefore(infoDiv, resultsDiv);
+            }
+
+            try {
                 // Now analyze with Gemini AI
-                const reviewTexts = result.data.map(r => r.text).join('\n\n');
                 const prompt = `以下の口コミを分析し、以下の形式でJSONを出力してください：
                 {
                     "sentiment": "positive/neutral/negative",
@@ -2063,12 +2149,14 @@
                 const jsonText = aiData.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
                 const analysis = JSON.parse(jsonText);
 
-                displayReviewAnalysis(analysis, result.count);
+                displayReviewAnalysis(analysis, reviewCount);
 
             } catch (error) {
+                // Show error only if AI analysis failed
                 resultsDiv.innerHTML = `<div class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
-                    <p class="font-bold">エラー</p>
+                    <p class="font-bold">AI分析エラー</p>
                     <p class="text-sm">${error.message}</p>
+                    <p class="text-xs mt-2">Gemini APIキーが正しく設定されているか確認してください。</p>
                 </div>`;
             }
         }
@@ -2113,7 +2201,7 @@
 
         async function runMarketAnalysis(area, service) {
             try {
-                const response = await fetch(`${BACKEND_API}/api/market/analysis`, {
+                const response = await fetch(`${BACKEND_API}/api/market-analysis`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ area, service })
